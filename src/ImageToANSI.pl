@@ -1,7 +1,16 @@
+# TODOs
+#
+# * Accept input as parameter
+# * Percentage progress
+# * Commenting
+# * Reenable warnings/strict :D
+
 #use warnings;
 #use strict;
 use GD;
 use Term::ANSIColor;
+#use open qw/:std :utf8/;
+#use Encode;
 
 sub rgb_to_int {
     my ($r, $g, $b) = @_;
@@ -61,9 +70,10 @@ sub get_ansi_color {
 
 my $COLUMNS = 80;
  
-my $image = new GD::Image('homer.png') or die;
+#my $image = new GD::Image('line.png') or die;
+#my $image = new GD::Image('homer.png') or die;
 #my $image = new GD::Image('circle.png') or die;
-#my $image = new GD::Image('square.png') or die;
+my $image = new GD::Image('square.png') or die;
 #my $image = new GD::Image('mona_lisa.jpg') or die;
 #my $image = new GD::Image('van_gogh.jpg') or die;
 #my $image = new GD::Image('van_gogh2.jpg') or die;
@@ -109,19 +119,15 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
     }
 }
 
+system("CHCP 65001");
 
-for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
-    my $output_string = "echo ";
+for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
     for (my $x_block = 0; $x_block < $COLUMNS; $x_block++) {
-        $output_string = sprintf("%s%c[%d;%dm%c",
-            $output_string,
-            27,
+        printf("\x{1B}[%d;%dm\x{2584}",
             $block_colors[$x_block][$y_block],
-            $block_colors[$x_block][$y_block]+10,
-            220);        
+            $block_colors[$x_block][$y_block+1]+10);
     }
-    $output_string = sprintf("%s%c[0m",
-        $output_string,
-        27);
-    system($output_string);
+    printf("\x{1B}[0m\n");
 }
+
+system("CHCP 437");
