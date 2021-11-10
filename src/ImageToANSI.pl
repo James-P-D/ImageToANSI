@@ -8,9 +8,32 @@
 #use warnings;
 #use strict;
 use GD;
-use Term::ANSIColor;
 use open qw/:std :utf8/;
-use Encode;
+
+sub usage {
+    printf("Usage:\n");
+    printf("perl ImageToANSI.pl IMAGE_FILE [options]:\n");
+    printf("     [Options] - /q     (quiet mode)\n");
+}
+
+sub parse_args {
+    my ($ARGV) = @_;
+    
+    my $image;
+    my $quiet_mode = 0;
+    
+    foreach my $arg_num (0 .. $#ARGV) {
+        if ($arg_num == 0) {
+            $image = new GD::Image($ARGV[$arg_num]) or die;
+        } else {
+            if ($ARGV[$arg_num] == "/q") {
+                $quiet_mode = 1;
+            }
+        }
+    }
+        
+    return ($image, $quiet_mode);
+}
 
 sub rgb_to_int {
     my ($r, $g, $b) = @_;
@@ -46,8 +69,6 @@ $win10_colors_dict{rgb_to_int(180,   0, 158)} = 95; # Bright magenta
 $win10_colors_dict{rgb_to_int( 97, 214, 214)} = 96; # Bright cyan
 $win10_colors_dict{rgb_to_int(242, 242, 242)} = 97; # Bright white
 
-
-
 sub get_ansi_color {
     my (($r1, $g1, $b1)) = @_;
     my $closest_color = (255 ** 2) + (255 ** 2) + (255 ** 2);
@@ -62,34 +83,31 @@ sub get_ansi_color {
             $closest_color_index = $key;
         }        
     }
-    #printf("%d ", $win10_colors_dict{$closest_color_index});
+
     return $win10_colors_dict{$closest_color_index};
 }
 
-
-
 my $COLUMNS = 80;
- 
-#my $image = new GD::Image('line.png') or die;
-#my $image = new GD::Image('steps.png') or die;
-#my $image = new GD::Image('blocks.png') or die;
-my $image = new GD::Image('homer.png') or die;
-#my $image = new GD::Image('circle.png') or die;
-#my $image = new GD::Image('white.png') or die;
 
-#my $image = new GD::Image('square.png') or die;
-#my $image = new GD::Image('mona_lisa.jpg') or die;
-#my $image = new GD::Image('van_gogh.jpg') or die;
-#my $image = new GD::Image('van_gogh2.jpg') or die;
+#################################################################
+
+my $argc = $#ARGV + 1;
+
+if ($argc < 1) {
+    usage();    
+    exit;
+}
+
+my ($image, $quiet_mode) = parse_args($ARGV);
 
 my $width = $image->width;
 my $height = $image->height;
-printf("width = %d\n", $width);
-printf("height = %d\n", $height);
-
 my $block_size = $width / $COLUMNS;
-printf("block_size = %f\n", $block_size);
-
+if (!$quiet_mode) {
+    printf("width = %d\n", $width);
+    printf("height = %d\n", $height);
+    printf("block_size = %f\n", $block_size);
+}
 my @block_colors;
 
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
@@ -112,7 +130,6 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
         my $mode_color = -1;
         my $mode_color_freq = -1;
         foreach my $key (keys(%colors_dict)) {
-            #printf("%X, count = %d\n", $key, $colors_dict{$key});
             if($colors_dict{$key} > $mode_color_freq) {
                 $mode_color_freq = $colors_dict{$key};
                 $mode_color = $key;           
@@ -123,7 +140,7 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
     }
 }
 
-system("CHCP 65001");
+system(sprintf("CHCP 65001 %s", $quiet_mode ? "> nul" : ""));
 
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
     for (my $x_block = 0; $x_block < $COLUMNS; $x_block++) {
@@ -134,4 +151,4 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
     printf("\x{1B}[0m\n");
 }
 
-system("CHCP 437");
+system(sprintf("CHCP 437 %s", $quiet_mode ? "> nul" : ""));
