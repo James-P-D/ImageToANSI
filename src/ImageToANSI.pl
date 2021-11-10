@@ -9,8 +9,8 @@
 #use strict;
 use GD;
 use Term::ANSIColor;
-#use open qw/:std :utf8/;
-#use Encode;
+use open qw/:std :utf8/;
+use Encode;
 
 sub rgb_to_int {
     my ($r, $g, $b) = @_;
@@ -71,9 +71,13 @@ sub get_ansi_color {
 my $COLUMNS = 80;
  
 #my $image = new GD::Image('line.png') or die;
-#my $image = new GD::Image('homer.png') or die;
+#my $image = new GD::Image('steps.png') or die;
+#my $image = new GD::Image('blocks.png') or die;
+my $image = new GD::Image('homer.png') or die;
 #my $image = new GD::Image('circle.png') or die;
-my $image = new GD::Image('square.png') or die;
+#my $image = new GD::Image('white.png') or die;
+
+#my $image = new GD::Image('square.png') or die;
 #my $image = new GD::Image('mona_lisa.jpg') or die;
 #my $image = new GD::Image('van_gogh.jpg') or die;
 #my $image = new GD::Image('van_gogh2.jpg') or die;
@@ -124,8 +128,8 @@ system("CHCP 65001");
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
     for (my $x_block = 0; $x_block < $COLUMNS; $x_block++) {
         printf("\x{1B}[%d;%dm\x{2584}",
-            $block_colors[$x_block][$y_block],
-            $block_colors[$x_block][$y_block+1]+10);
+            $block_colors[$x_block][$y_block+1],
+            $block_colors[$x_block][$y_block]+10);
     }
     printf("\x{1B}[0m\n");
 }
