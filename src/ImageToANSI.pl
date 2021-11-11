@@ -1,7 +1,5 @@
 # TODOs
 #
-# * Accept input as parameter
-# * Percentage progress
 # * Commenting
 # * Reenable warnings/strict :D
 
@@ -10,6 +8,10 @@
 use GD;
 use open qw/:std :utf8/;
 
+#################################################################
+# usage()
+#################################################################
+
 sub usage {
     printf("Usage:\n");
     printf("perl ImageToANSI.pl IMAGE_FILE [options]:\n");
@@ -17,6 +19,10 @@ sub usage {
     printf("               - /c X   (columns (default X=80))\n");
     exit();
 }
+
+#################################################################
+# parse_args()
+#################################################################
 
 sub parse_args {
     my ($ARGV) = @_;
@@ -51,10 +57,18 @@ sub parse_args {
     return ($image, $quiet_mode, $columns);
 }
 
+#################################################################
+# rgb_to_int()
+#################################################################
+
 sub rgb_to_int {
     my ($r, $g, $b) = @_;
     return ($r << 16) + ($g << 8) + ($b << 0);
 }
+
+#################################################################
+# int_to_rgb()
+#################################################################
 
 sub int_to_rgb {
     my ($rgb) = @_;
@@ -65,6 +79,10 @@ sub int_to_rgb {
     
     return ($r, $g, $b);
 }
+
+#################################################################
+# win10_colors_dict()
+#################################################################
 
 # Taken from https://en.wikipedia.org/wiki/ANSI_escape_code#3-bit_and_4-bit
 my %win10_colors_dict = ();
@@ -85,6 +103,10 @@ $win10_colors_dict{rgb_to_int(180,   0, 158)} = 95; # Bright magenta
 $win10_colors_dict{rgb_to_int( 97, 214, 214)} = 96; # Bright cyan
 $win10_colors_dict{rgb_to_int(242, 242, 242)} = 97; # Bright white
 
+#################################################################
+# get_ansi_color()
+#################################################################
+
 sub get_ansi_color {
     my (($r1, $g1, $b1)) = @_;
     my $closest_color = (255 ** 2) + (255 ** 2) + (255 ** 2);
@@ -104,13 +126,18 @@ sub get_ansi_color {
 }
 
 #################################################################
+# Start of actual program
+#################################################################
 
+# Check we have atleast one parameter
 if ($#ARGV == -1) {
     usage();    
 }
 
+# Get the image file, quiet-mode and number of columns
 my ($image, $quiet_mode, $columns) = parse_args($ARGV);
 
+# Calculate the size of each block
 my $width = $image->width;
 my $height = $image->height;
 my $block_size = $width / $columns;
@@ -120,26 +147,34 @@ if (!$quiet_mode) {
     printf("block_size = %f\n", $block_size);
 }
 
+# Create the array of ANSI block colors
 my @block_colors;
+
+# Percentage complete counter
 my $pc_complete = 0;
 
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
     for (my $x_block = 0; $x_block < $columns; $x_block++) {
 
+        # Create a dictionary of RGB-to-frequency data
         my %colors_dict = ();  
         for (my $x = $x_block * $block_size; $x < (($x_block+1) * $block_size); $x++){
             for (my $y = $y_block * $block_size; $y < (($y_block + 1) * $block_size); $y++) {
                 my $pixel_index = $image->getPixel($x, $y);
                 my ($r, $g, $b) = $image->rgb($pixel_index);                
                 my $rgb = rgb_to_int($r, $g, $b);
-                
+                                
                 if (exists($colors_dict{$rgb})) {
+                    # If color already exists in dictionary, increment..
                     $colors_dict{$rgb}++;   
                 } else {
+                    # ..otherwise just set to 1
                     $colors_dict{$rgb} = 1;
                 }
             }
         }
+        
+        # Find the most popular color in the block
         my $mode_color = -1;
         my $mode_color_freq = -1;
         foreach my $key (keys(%colors_dict)) {
@@ -149,8 +184,11 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
             }
         }
         
+        # Set the ANSI code for the block
         $block_colors[$x_block][$y_block] = get_ansi_color(int_to_rgb($mode_color));
     }
+    
+    # Display the percentage complete if not in quiet-mode
     if (!$quiet_mode) {
         $pc_complete = ($y_block / ($height / $block_size)) * 100;
         printf("%3d%\n", $pc_complete);
@@ -161,9 +199,10 @@ if (!$quiet_mode) {
     printf("Complete!\n");
 }
 
+# Change the codepage so we can display 0x220 extended ASCII character for lower-block
 system(sprintf("CHCP 65001 %s", $quiet_mode ? "> nul" : ""));
 
-for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
+for (my $y_block = 0; $y_block < ($height / $block_size); $y_block += 2) {
     for (my $x_block = 0; $x_block < $columns; $x_block++) {
         printf("\x{1B}[%d;%dm\x{2584}",
             $block_colors[$x_block][$y_block+1],
@@ -172,4 +211,5 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
     printf("\x{1B}[0m\n");
 }
 
+# Change the codepage back to default
 system(sprintf("CHCP 437 %s", $quiet_mode ? "> nul" : ""));
