@@ -14,6 +14,8 @@ sub usage {
     printf("Usage:\n");
     printf("perl ImageToANSI.pl IMAGE_FILE [options]:\n");
     printf("     [Options] - /q     (quiet mode)\n");
+    printf("               - /c X   (columns (default X=80))\n");
+    exit();
 }
 
 sub parse_args {
@@ -21,18 +23,32 @@ sub parse_args {
     
     my $image;
     my $quiet_mode = 0;
+    my $columns = 80;
     
-    foreach my $arg_num (0 .. $#ARGV) {
+    my $arg_num = 0;
+    while ($arg_num <= $#ARGV) {
         if ($arg_num == 0) {
             $image = new GD::Image($ARGV[$arg_num]) or die;
         } else {
-            if ($ARGV[$arg_num] == "/q") {
+            if ($ARGV[$arg_num] eq "/q") {
                 $quiet_mode = 1;
+            } elsif ($ARGV[$arg_num] eq "/c") {
+                $arg_num++;        
+                if ($arg_num == $#ARGV + 1) {
+                    printf("Expected additional integer parameter after '/c'\n");
+                    usage();
+                } else {
+                    $columns = $ARGV[$arg_num];
+                }
+            } else {
+              printf("Unknown parameter: %s\n", $ARGV[$arg_num]);
+              usage();
             }
         }
+        $arg_num++;
     }
-        
-    return ($image, $quiet_mode);
+
+    return ($image, $quiet_mode, $columns);
 }
 
 sub rgb_to_int {
@@ -87,31 +103,28 @@ sub get_ansi_color {
     return $win10_colors_dict{$closest_color_index};
 }
 
-my $COLUMNS = 80;
-
 #################################################################
 
-my $argc = $#ARGV + 1;
-
-if ($argc < 1) {
+if ($#ARGV == -1) {
     usage();    
-    exit;
 }
 
-my ($image, $quiet_mode) = parse_args($ARGV);
+my ($image, $quiet_mode, $columns) = parse_args($ARGV);
 
 my $width = $image->width;
 my $height = $image->height;
-my $block_size = $width / $COLUMNS;
+my $block_size = $width / $columns;
 if (!$quiet_mode) {
     printf("width = %d\n", $width);
     printf("height = %d\n", $height);
     printf("block_size = %f\n", $block_size);
 }
+
 my @block_colors;
+my $pc_complete = 0;
 
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
-    for (my $x_block = 0; $x_block < $COLUMNS; $x_block++) {
+    for (my $x_block = 0; $x_block < $columns; $x_block++) {
 
         my %colors_dict = ();  
         for (my $x = $x_block * $block_size; $x < (($x_block+1) * $block_size); $x++){
@@ -138,12 +151,20 @@ for (my $y_block = 0; $y_block < ($height / $block_size); $y_block++) {
         
         $block_colors[$x_block][$y_block] = get_ansi_color(int_to_rgb($mode_color));
     }
+    if (!$quiet_mode) {
+        $pc_complete = ($y_block / ($height / $block_size)) * 100;
+        printf("%3d%\n", $pc_complete);
+    }
+}
+
+if (!$quiet_mode) {
+    printf("Complete!\n");
 }
 
 system(sprintf("CHCP 65001 %s", $quiet_mode ? "> nul" : ""));
 
 for (my $y_block = 0; $y_block < ($height / $block_size); $y_block+=2) {
-    for (my $x_block = 0; $x_block < $COLUMNS; $x_block++) {
+    for (my $x_block = 0; $x_block < $columns; $x_block++) {
         printf("\x{1B}[%d;%dm\x{2584}",
             $block_colors[$x_block][$y_block+1],
             $block_colors[$x_block][$y_block]+10);
